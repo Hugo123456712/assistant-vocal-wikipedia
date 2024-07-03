@@ -1,0 +1,70 @@
+import tkinter as tk
+from tkinter import messagebox
+from speech_recognition import Recognizer, Microphone
+import wikipedia as wk
+from gtts import gTTS
+import os
+
+# Fonction pour reconnaître la parole et rechercher sur Wikipedia
+def recognize_and_search():
+    recognizer = Recognizer()
+    with Microphone() as source:
+        status_label.config(text="Réglage du bruit ambiant... Patientez...")
+        recognizer.adjust_for_ambient_noise(source)
+        status_label.config(text="Vous pouvez parler...")
+        audio = recognizer.listen(source)
+        status_label.config(text="Enregistrement terminé !")
+
+    # Reconnaissance de l'audio
+    try:
+        status_label.config(text="Analyse de l'audio...")
+        text = recognizer.recognize_google(audio, language="fr-FR")
+        status_label.config(text="Analyse terminée !")
+        result_text.set(f"Vous avez dit : {text}")
+    except Exception as ex:
+        messagebox.showerror("Erreur de reconnaissance", str(ex))
+        return
+
+    # Recherche de l'information sur Wikipedia
+    try:
+        summary = wk.summary(text, sentences=5)
+        result_text.set(f"Résumé de Wikipedia : {summary}")
+    except Exception as ex:
+        messagebox.showerror("Erreur de recherche", str(ex))
+        return
+
+    # Convertir en audio et lire
+    try:
+        tts = gTTS(summary, lang='fr')
+        tts.save('voc.wav')
+        if os.name == 'nt':  # Pour Windows
+            os.system('start voc.wav')
+        elif os.name == 'posix':  # Pour macOS et Linux
+            os.system('afplay voc.wav' if os.uname().sysname == 'Darwin' else 'aplay voc.wav')
+    except Exception as ex:
+        messagebox.showerror("Erreur de lecture audio", str(ex))
+
+# Configuration de Wikipedia
+wk.set_lang("fr")
+
+# Création de la fenêtre principale
+root = tk.Tk()
+root.title("Assistant Vocal Wikipedia")
+
+# Variables tkinter
+result_text = tk.StringVar()
+status_label = tk.Label(root, text="")
+
+# Création des widgets
+title_label = tk.Label(root, text="Assistant Vocal Wikipedia", font=("Helvetica", 16))
+start_button = tk.Button(root, text="Commencer l'enregistrement", command=recognize_and_search)
+result_label = tk.Label(root, textvariable=result_text, wraplength=400, justify="left")
+
+# Placement des widgets
+title_label.pack(pady=10)
+start_button.pack(pady=10)
+status_label.pack(pady=10)
+result_label.pack(pady=10)
+
+# Démarrage de la boucle principale
+root.mainloop()
